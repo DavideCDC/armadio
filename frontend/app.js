@@ -74,9 +74,12 @@ const app = {
       } else {
         const data = await auth.signIn(email, pass);
         state.user = data.user;
+        const prof = await auth.getProfile(state.user.id);
+        if (prof) state.profile = prof;
         this.closeAuthModal();
         this.updateProfileUI();
         this.toast('Accesso effettuato');
+        this.loadWardrobeData();
       }
     } catch (e) {
       errEl.textContent = e.message || 'Errore';
@@ -773,6 +776,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const session = await auth.getSession();
   if (session && session.user) {
     state.user = session.user;
+    const profile = await auth.getProfile(session.user.id);
+    if (profile) state.profile = profile;
   }
   
   app.updateProfileUI();
