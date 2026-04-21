@@ -313,11 +313,48 @@ const app = {
   },
 
   async analyzeImage(file) {
-    const fd = new FormData(); fd.append('file', file);
     try {
-      const r = await fetch(`${API}/wardrobe/analyze-image`, { method:'POST', body:fd });
-      if (r.ok) { this.fillForm(await r.json()); return; }
-    } catch {}
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+
+      const GEMINI_API_KEY = 'AIzaSyDSrFq1g_LoKE1x6lK-aNe8KnaZhCi7trM';
+      const prompt = `Analizza questo capo di abbigliamento e rispondi SOLO in JSON con questi campi:
+categoria_rilevata (una di: T-shirt, Camicia, Maglione, Felpa, Pantaloni, Jeans, Gonna, Vestito, Scarpe, Giacca, Cappotto, Accessori),
+colore_primario (in formato hex es. #000000),
+trama_materiale (uno di: Cotone, Lana, Denim, Seta, Lino, Sintetico, Pelle),
+limite_lavaggio_consigliato (numero intero da 1 a 10),
+marca_rilevata (marca se visibile, altrimenti Nessuna)`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: file.type || 'image/jpeg', data: base64Data } }
+            ]
+          }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        const jsonText = resData.candidates[0].content.parts[0].text;
+        const cleanedText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        this.fillForm(JSON.parse(cleanedText));
+        return;
+      }
+    } catch (e) {
+      console.warn('Image analysis failed:', e);
+    }
+    
+    // Fallback esistente
     this.fillForm({ categoria_rilevata:'Maglieria', colore_primario:'#555', trama_materiale:'Cotone', limite_lavaggio_consigliato:3 });
   },
 
