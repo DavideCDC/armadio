@@ -2,7 +2,7 @@
  * Supabase Client — Singleton per il frontend
  */
 const SUPABASE_URL = 'https://kxwhrdqqabdcttescwjh.supabase.co';
-const SUPABASE_ANON_KEY = '[eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4d2hyZHFxYWJkY3R0ZXNjd2poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTY2NTIsImV4cCI6MjA5MjI3MjY1Mn0.N43b1nE6avf_0Vl2WmQ-pLN3NCRQ4OtW9MdVjP17k9o]';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4d2hyZHFxYWJkY3R0ZXNjd2poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTY2NTIsImV4cCI6MjA5MjI3MjY1Mn0.N43b1nE6avf_0Vl2WmQ-pLN3NCRQ4OtW9MdVjP17k9o';
 
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
