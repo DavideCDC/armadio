@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Assistente guardaroba digitale con IA — gestione capi, outfit scoring e routine predittive.">
+  <title>Armadio AI</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SVG defs -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#8b5cf6"/>
+        <stop offset="100%" stop-color="#22c55e"/>
+      </linearGradient>
+    </defs>
+  </svg>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header" id="appHeader">
+    <div class="header-inner">
+      <div class="header-brand">
+        <i data-lucide="shirt" class="logo-icon"></i>
+        <h1>Armadio</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="weather-chip" id="weatherChip" onclick="app.refreshWeather()">
+          <i data-lucide="cloud-sun" style="width:14px;height:14px"></i>
+          <span class="temp" id="weatherTemp">--°</span>
+          <span id="weatherCity">Roma</span>
+        </div>
+        <button class="btn btn-ghost" id="loginBtn" onclick="app.openAuthModal()" style="padding:4px 10px; font-size:0.75rem; border-radius:var(--radius-full);">
+          <i data-lucide="log-in" style="width:14px;height:14px;"></i> Accedi
+        </button>
+        <button class="nav-btn" id="profileBtn" onclick="app.navigateTo('settings')" style="padding:4px 8px; display:none;" aria-label="Impostazioni">
+          <i data-lucide="user" style="width:20px;height:20px;"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGE: HOME -->
+  <main class="page active" id="page-home">
+
+    <!-- Routine Suggestion -->
+    <div class="card" id="routineCard">
+      <div class="card-row">
+        <div class="card-icon" style="background:var(--accent-dim); color:var(--accent);">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="card-body">
+          <p class="section-label" id="routineLabel">SUGGERIMENTO</p>
+          <h3 id="routineTitle">Buongiorno! Cosa indossiamo?</h3>
+          <p id="routineDetail" style="margin-top:4px;">Usa l'app per sbloccare le previsioni</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context Tags -->
+    <div class="section-label">CONTESTO</div>
+    <div class="tags" id="contextTags">
+      <span class="tag" onclick="app.selectContext('Lavoro')"><i data-lucide="briefcase"></i> Lavoro</span>
+      <span class="tag" onclick="app.selectContext('Casual')"><i data-lucide="coffee"></i> Casual</span>
+      <span class="tag" onclick="app.selectContext('Sport')"><i data-lucide="dumbbell"></i> Sport</span>
+      <span class="tag" onclick="app.selectContext('Serata')"><i data-lucide="moon"></i> Serata</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="val" id="statTotal">0</div>
+        <div class="lbl">Totale</div>
+      </div>
+      <div class="stat-box">
+        <div class="val" style="color:var(--green)" id="statClean">0</div>
+        <div class="lbl">Puliti</div>
+      </div>
+      <div class="stat-box">
+        <div class="val" style="color:var(--red)" id="statDirty">0</div>
+        <div class="lbl">Sporchi</div>
+      </div>
+      <div class="stat-box">
+        <div class="val" style="color:var(--blue)" id="statWashing">0</div>
+        <div class="lbl">Lavaggio</div>
+      </div>
+    </div>
+
+    <!-- Recent -->
+    <div class="section-header">
+      <h2>Recenti</h2>
+      <span class="link" onclick="app.navigateTo('wardrobe')">Apri armadio</span>
+    </div>
+    <div id="recentArea">
+      <div class="empty">
+        <i data-lucide="camera"></i>
+        <h3>Nessun capo registrato</h3>
+        <p>Premi + per aggiungere il primo capo al tuo guardaroba</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- PAGE: WARDROBE -->
+  <main class="page" id="page-wardrobe">
+    <div class="section-header">
+      <h2>Guardaroba</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="link" onclick="app.openWashModal()"><i data-lucide="waves" style="width:14px;height:14px;vertical-align:-2px;"></i> Bucato</span>
+        <span class="link" onclick="app.filterWardrobe()">Filtra</span>
+      </div>
+    </div>
+    <div class="cloth-grid" id="wardrobeGrid"></div>
+    <div class="empty" id="wardrobeEmpty">
+      <i data-lucide="hanger"></i>
+      <h3>Armadio vuoto</h3>
+      <p>Aggiungi i tuoi capi con il tasto +</p>
+    </div>
+  </main>
+
+  <!-- PAGE: OUTFIT -->
+  <main class="page" id="page-outfit">
+    <div class="section-header">
+      <h2>Crea outfit</h2>
+    </div>
+    <p style="color:var(--text-3); font-size:.82rem; margin-bottom:14px;">
+      Seleziona i capi da indossare, poi valuta l'outfit.
+    </p>
+    <div class="cloth-grid" id="outfitGrid"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary btn-full" id="confirmBtn" onclick="app.confirmOutfit()" disabled>
+      <i data-lucide="sparkles"></i> Seleziona almeno un capo
+    </button>
+  </main>
+
+  <!-- PAGE: SCORE -->
+  <main class="page" id="page-score">
+    <div class="score-section">
+      <div class="score-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="45"/>
+          <circle class="progress" id="scoreCircle" cx="50" cy="50" r="45" stroke="url(#scoreGrad)"/>
+        </svg>
+        <div class="value" id="scoreValue">0</div>
+        <div class="label">punteggio</div>
+      </div>
+      <p class="score-msg" id="scoreMsg">Analisi in corso...</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:14px;">Dettaglio</h3>
+      <div class="breakdown">
+        <div class="break-row">
+          <div class="break-label"><span>Coerenza meteo</span><span id="bMeteo">0/3</span></div>
+          <div class="break-bar"><div class="fill fill-blue" id="bMeteoBar" style="width:0%"></div></div>
+        </div>
+        <div class="break-row">
+          <div class="break-label"><span>Armonia colori</span><span id="bColori">0/4</span></div>
+          <div class="break-bar"><div class="fill fill-purple" id="bColoriBar" style="width:0%"></div></div>
+        </div>
+        <div class="break-row">
+          <div class="break-label"><span>Freshness</span><span id="bFresh">0/3</span></div>
+          <div class="break-bar"><div class="fill fill-green" id="bFreshBar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="alerts"></div>
+    <div class="spacer-sm"></div>
+    <button class="btn btn-ghost btn-full" onclick="app.navigateTo('home')">
+      <i data-lucide="arrow-left"></i> Torna alla home
+    </button>
+  </main>
+
+  <!-- PAGE: SETTINGS -->
+  <main class="page" id="page-settings">
+    <div class="section-header"><h2>Impostazioni</h2></div>
+    <div class="card">
+      <div class="card-row">
+        <div class="card-icon" style="background:var(--accent-dim);color:var(--accent);"><i data-lucide="user"></i></div>
+        <div class="card-body">
+          <p class="section-label">ACCOUNT</p>
+          <h3 id="settingsEmail">—</h3>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Città di riferimento</label>
+        <input type="text" id="settingsCity" class="form-input" placeholder="es. Roma">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="app.saveCity()">
+        <i data-lucide="map-pin"></i> Salva città
+      </button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-full" onclick="app.logout()" style="color:var(--red);border-color:rgba(239,68,68,.2);">
+      <i data-lucide="log-out"></i> Esci dall'account
+    </button>
+  </main>
+
+  <!-- PAGE: MARKET -->
+  <main class="page" id="page-market">
+    <div class="section-header"><h2>Suggerimenti</h2></div>
+    <p style="color:var(--text-3); font-size:.82rem; margin-bottom:14px;">
+      Capi mancanti o da sostituire nel tuo guardaroba.
+    </p>
+    <div id="marketRecs">
+      <div class="empty">
+        <i data-lucide="search"></i>
+        <h3>Aggiungi più capi</h3>
+        <p>I suggerimenti personalizzati appariranno qui</p>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="section-header"><h2>Vendi su Vinted</h2></div>
+    <div id="vintedList">
+      <p style="font-size:.8rem; color:var(--text-3);">Aggiungi capi per esportarli.</p>
+    </div>
+  </main>
+
+  <!-- MODAL: ADD ITEM -->
+  <div class="modal-bg" id="addModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:16px;">Aggiungi capo</h2>
+
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoIn').click()">
+        <i data-lucide="camera"></i>
+        <span>Tocca per scattare o caricare</span>
+        <img id="photoPreview" style="display:none" alt="">
+      </div>
+      <input type="file" id="photoIn" accept="image/*" capture="environment" style="display:none"
+             onchange="app.handlePhoto(event)">
+
+      <div class="spacer"></div>
+
+      <div id="formArea" style="display:none">
+        <div class="section-label">TRATTI RILEVATI</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="inCat" class="form-select">
+              <option>T-shirt</option><option>Camicia</option><option>Maglione</option>
+              <option>Felpa</option><option>Pantaloni</option><option>Jeans</option>
+              <option>Gonna</option><option>Vestito</option><option>Scarpe</option>
+              <option>Giacca</option><option>Cappotto</option><option>Accessori</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Marca / Brand</label>
+            <input type="text" id="inMarca" class="form-input" placeholder="Es. Nike, Zara, Nessuna">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Materiale</label>
+            <select id="inMat" class="form-select">
+              <option>Cotone</option><option>Lana</option><option>Denim</option>
+              <option>Seta</option><option>Lino</option><option>Sintetico</option><option>Pelle</option>
+            </select>
+          </div>
+        </div>
+        <div class="color-row">
+          <span style="font-size:.68rem; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em;">Colore</span>
+          <input type="color" id="inColor" value="#555555" class="color-input">
+          <span id="inColorHex" class="color-hex">#555555</span>
+          <div style="flex:1"></div>
+          <span style="font-size:.68rem; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em;">Usi max</span>
+          <input type="number" id="inWash" value="3" min="1" max="30" class="form-input" style="width:50px; text-align:center;">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="app.saveItem()">
+          <i data-lucide="check"></i> Salva nel guardaroba
+        </button>
+      </div>
+
+      <div class="spacer-sm"></div>
+      <button class="btn btn-ghost btn-full" onclick="app.closeModal()">Annulla</button>
+    </div>
+  </div>
+
+  <!-- MODAL: ITEM DETAIL -->
+  <div class="modal-bg" id="detailModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div id="detailContent">
+        <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px;">
+          <div class="card-icon" id="detailIcon" style="width:52px;height:52px;background:var(--accent-dim);color:var(--accent);"></div>
+          <div>
+            <h2 id="detailName">—</h2>
+            <p style="font-size:.8rem;color:var(--text-2);" id="detailMeta">—</p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+          <div class="stat-box">
+            <div class="val" id="detailUsi">0</div>
+            <div class="lbl">Usi</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="detailLimite">0</div>
+            <div class="lbl">Limite</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="detailStato">—</div>
+            <div class="lbl">Stato</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <span style="font-size:.78rem;color:var(--text-3);">Colore</span>
+          <div id="detailColorSwatch" style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.1);"></div>
+          <span id="detailColorHex" style="font-size:.78rem;color:var(--text-2);font-family:monospace;"></span>
+        </div>
+        <div class="usage-bar" style="height:6px;margin-bottom:16px;"><div class="fill" id="detailWashBar" style="width:0%"></div></div>
+        <button class="btn btn-ghost btn-full" onclick="app.closeDetailModal()" style="margin-bottom:8px;">
+          <i data-lucide="x"></i> Chiudi
+        </button>
+        <button class="btn btn-full" onclick="app.deleteItem()" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.2);">
+          <i data-lucide="trash-2"></i> Elimina capo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: WASH -->
+  <div class="modal-bg" id="washModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:6px;">Metti i capi in lavatrice</h2>
+      <p style="font-size:.82rem;color:var(--text-3);margin-bottom:16px;">Seleziona i capi sporchi da lavare, poi conferma.</p>
+      <div id="washList"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-full" id="washConfirmBtn" onclick="app.confirmWash()" disabled>
+        <i data-lucide="waves"></i> Lava selezionati
+      </button>
+      <div class="spacer-sm"></div>
+      <button class="btn btn-ghost btn-full" onclick="app.closeWashModal()">Annulla</button>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTH -->
+  <div class="modal-bg" id="authModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:16px;">Accedi ad Armadio AI</h2>
+      <div id="authTabs" style="display:flex;gap:0;margin-bottom:20px;">
+        <button class="btn btn-primary" id="tabLogin" onclick="app.switchAuthTab('login')" style="flex:1;border-radius:var(--radius-sm) 0 0 var(--radius-sm);">Accedi</button>
+        <button class="btn btn-ghost" id="tabRegister" onclick="app.switchAuthTab('register')" style="flex:1;border-radius:0 var(--radius-sm) var(--radius-sm) 0;">Registrati</button>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Email</label>
+        <input type="email" id="authEmail" class="form-input" placeholder="la.tua@email.com">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Password</label>
+        <input type="password" id="authPass" class="form-input" placeholder="Minimo 6 caratteri">
+      </div>
+      <button class="btn btn-primary btn-full" id="authSubmit" onclick="app.handleAuth()">
+        <i data-lucide="log-in"></i> <span id="authBtnText">Accedi</span>
+      </button>
+      <p id="authError" style="color:var(--red);font-size:.78rem;margin-top:10px;text-align:center;display:none;"></p>
+      <p id="authSuccess" style="color:var(--green);font-size:.78rem;margin-top:10px;text-align:center;display:none;"></p>
+      <div class="spacer-sm"></div>
+      <button class="btn btn-ghost btn-full" onclick="app.closeAuthModal()">Annulla</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" data-page="home" onclick="app.navigateTo('home')">
+      <i data-lucide="home"></i>
+      <span class="nav-label">Home</span>
+    </button>
+    <button class="nav-btn" data-page="wardrobe" onclick="app.navigateTo('wardrobe')">
+      <i data-lucide="shirt"></i>
+      <span class="nav-label">Armadio</span>
+    </button>
+    <button class="nav-fab" onclick="app.openAddItem()" aria-label="Aggiungi capo">
+      <i data-lucide="plus"></i>
+    </button>
+    <button class="nav-btn" data-page="outfit" onclick="app.navigateTo('outfit')">
+      <i data-lucide="wand-2"></i>
+      <span class="nav-label">Outfit</span>
+    </button>
+    <button class="nav-btn" data-page="market" onclick="app.navigateTo('market')">
+      <i data-lucide="shopping-bag"></i>
+      <span class="nav-label">Market</span>
+    </button>
+  </nav>
+
+  <script src="supabase.js?v=7"></script>
+  <script src="app.js?v=7"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registrato con successo: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('Registrazione ServiceWorker fallita: ', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

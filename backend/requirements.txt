@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+supabase
+python-dotenv
+httpx
+rembg
+ultralytics
+Pillow
+google-generativeai
