@@ -835,6 +835,232 @@ JSON esatto da restituire:
     return JSON.parse(clean);
   },
 
+  openLookModal() {
+    document.getElementById('lookModal').classList.add('open');
+    document.getElementById('lookStep1').style.display = 'block';
+    document.getElementById('lookStep2').style.display = 'none';
+    document.getElementById('lookStep3').style.display = 'none';
+    document.getElementById('lookStep4').style.display = 'none';
+    document.getElementById('lookPhotoPreview').style.display = 'none';
+    document.getElementById('lookAnalyzeBtn').disabled = true;
+    document.getElementById('lookDestination').value = '';
+    state.uploadedFile = null;
+    state._lookDetected = [];
+    state._lookPendingIndex = 0;
+    lucide.createIcons();
+  },
+
+  closeLookModal() {
+    document.getElementById('lookModal').classList.remove('open');
+  },
+
+  handleLookPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    state.uploadedFile = file;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const p = document.getElementById('lookPhotoPreview');
+      p.src = ev.target.result;
+      p.style.display = 'block';
+      const icon = document.querySelector('#lookUploadArea i');
+      const span = document.querySelector('#lookUploadArea span');
+      if (icon) icon.style.display = 'none';
+      if (span) span.style.display = 'none';
+      document.getElementById('lookAnalyzeBtn').disabled = false;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  async analyzeLook() {
+    if (!state.uploadedFile) return;
+    const destination = document.getElementById('lookDestination').value.trim() || 'Casual';
+
+    document.getElementById('lookStep1').style.display = 'none';
+    document.getElementById('lookStep2').style.display = 'block';
+
+    try {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(state.uploadedFile);
+      });
+
+      const GEMINI_API_KEY = 'AIzaSyDSrFq1g_LoKE1x6lK-aNe8KnaZhCi7trM';
+      const prompt = `Analizza tutti i capi di abbigliamento visibili su questa persona. Rispondi SOLO in JSON valido senza markdown.
+Destinazione: ${destination}
+Temperatura attuale: ${state.weather.temperatura_attuale || 22}°C
+
+Restituisci questo JSON:
+{
+  "capi_rilevati": [
+    {
+      "categoria": "<T-shirt|Camicia|Maglione|Felpa|Pantaloni|Jeans|Gonna|Vestito|Scarpe|Giacca|Cappotto|Accessori>",
+      "colore_primario": "<hex es. #000000>",
+      "trama_materiale": "<Cotone|Lana|Denim|Seta|Lino|Sintetico|Pelle>",
+      "marca_rilevata": "<marca se visibile altrimenti Nessuna>",
+      "limite_lavaggio_consigliato": <numero 1-10>
+    }
+  ],
+  "punteggio": <1-10 con 1 decimale>,
+  "messaggio": "<commento stile in italiano>",
+  "breakdown": {
+    "meteo": {"weighted": <0-3>, "max": 3},
+    "colori": {"weighted": <0-4>, "max": 4},
+    "freshness": {"weighted": <0-3>, "max": 3},
+    "totale": <somma>
+  },
+  "alert_lavaggio": []
+}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: state.uploadedFile.type || 'image/jpeg', data: base64Data } }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      });
+
+      const data = await response.json();
+      const clean = data.candidates[0].content.parts[0].text.replace(/```json/gi,'').replace(/```/g,'').trim();
+      const result = JSON.parse(clean);
+
+      state._lookResult = result;
+      state._lookDetected = result.capi_rilevati || [];
+      state._lookPendingIndex = 0;
+
+      // Aggiorna contatori per capi già in armadio
+      for (const rilevato of state._lookDetected) {
+        const match = state.wardrobe.find(w =>
+          w.categoria?.toLowerCase() === rilevato.categoria?.toLowerCase() &&
+          w.colore_primario?.toLowerCase() === rilevato.colore_primario?.toLowerCase()
+        );
+        if (match) {
+          match.contatore_usi_attuali = (match.contatore_usi_attuali || 0) + 1;
+          if (match.contatore_usi_attuali >= (match.limite_lavaggio || 3)) match.stato = 'sporco';
+          rilevato._matched = true;
+          // Aggiorna su Supabase
+          if (state.user && state.profile) {
+            try {
+              await db.updateClothingUses(match.id, match.contatore_usi_attuali, match.stato);
+            } catch(e) {}
+          }
+        }
+      }
+      this.saveLocalWardrobe();
+
+      // Filtra solo quelli non matchati
+      state._lookPending = state._lookDetected.filter(c => !c._matched);
+      state._lookPendingIndex = 0;
+
+      document.getElementById('lookStep2').style.display = 'none';
+      this._showNextPendingItem();
+
+    } catch(e) {
+      console.warn('Look analysis failed:', e);
+      document.getElementById('lookStep2').style.display = 'none';
+      document.getElementById('lookStep1').style.display = 'block';
+      this.toast('Analisi fallita, riprova');
+    }
+  },
+
+  _showNextPendingItem() {
+    if (!state._lookPending || state._lookPendingIndex >= state._lookPending.length) {
+      this._showLookScore();
+      return;
+    }
+    const item = state._lookPending[state._lookPendingIndex];
+    const total = state._lookPending.length;
+    const current = state._lookPendingIndex + 1;
+    document.getElementById('lookDetectedProgress').textContent = `Capo ${current} di ${total} non trovati`;
+    document.getElementById('lookDetectedCard').innerHTML = `
+      <div class="card-row" style="align-items:center;gap:12px;">
+        <div class="card-icon" style="background:${item.colore_primario}20;border:2px solid ${item.colore_primario};min-width:48px;height:48px;border-radius:12px;"></div>
+        <div class="card-body">
+          <h3>${item.categoria}</h3>
+          <p>${item.trama_materiale} · ${item.marca_rilevata !== 'Nessuna' ? item.marca_rilevata : ''}</p>
+          <p style="font-size:.75rem;color:var(--text-3);">Colore: ${item.colore_primario} · Max usi: ${item.limite_lavaggio_consigliato}</p>
+        </div>
+      </div>`;
+    document.getElementById('lookStep3').style.display = 'block';
+    lucide.createIcons();
+  },
+
+  skipDetectedItem() {
+    state._lookPendingIndex++;
+    this._showNextPendingItem();
+  },
+
+  async confirmDetectedItem() {
+    const item = state._lookPending[state._lookPendingIndex];
+    let imageUrl = '';
+    if (state.uploadedFile && state.user) {
+      try { imageUrl = await storage.uploadClothingImage(state.uploadedFile, state.user.id); } catch(e) {}
+    }
+    if (state.profile) {
+      try {
+        const saved = await db.insertClothing(state.profile.id, {
+          categoria: item.categoria,
+          colore_primario: item.colore_primario,
+          trama_materiale: item.trama_materiale,
+          limite_lavaggio: item.limite_lavaggio_consigliato,
+          image_url: imageUrl,
+          marca: item.marca_rilevata || 'Nessuna',
+          contatore_usi_attuali: 1,
+        });
+        state.wardrobe.push(saved);
+      } catch(e) {
+        state.wardrobe.push({
+          id: 'local_' + Date.now(),
+          categoria: item.categoria,
+          colore_primario: item.colore_primario,
+          trama_materiale: item.trama_materiale,
+          limite_lavaggio: item.limite_lavaggio_consigliato,
+          contatore_usi_attuali: 1,
+          stato: 'pulito',
+          image_url: imageUrl,
+          marca: item.marca_rilevata || 'Nessuna',
+        });
+      }
+    } else {
+      state.wardrobe.push({
+        id: 'local_' + Date.now(),
+        categoria: item.categoria,
+        colore_primario: item.colore_primario,
+        trama_materiale: item.trama_materiale,
+        limite_lavaggio: item.limite_lavaggio_consigliato,
+        contatore_usi_attuali: 1,
+        stato: 'pulito',
+        image_url: imageUrl,
+        marca: item.marca_rilevata || 'Nessuna',
+      });
+    }
+    this.saveLocalWardrobe();
+    this.toast(`${item.categoria} aggiunto all'armadio`);
+    state._lookPendingIndex++;
+    this._showNextPendingItem();
+  },
+
+  _showLookScore() {
+    document.getElementById('lookStep3').style.display = 'none';
+    document.getElementById('lookStep4').style.display = 'block';
+    const result = state._lookResult;
+    const p = result.punteggio || 0;
+    setTimeout(() => {
+      document.getElementById('lookScoreCircle').style.strokeDashoffset = 283 - (p/10)*283;
+    }, 100);
+    this.animateNum('lookScoreValue', 0, p, 1200);
+    document.getElementById('lookScoreMsg').textContent = result.messaggio || '';
+    const ac = document.getElementById('lookAlerts');
+    ac.innerHTML = (result.alert_lavaggio||[]).map(a =>
+      `<div class="alert alert-warn"><i data-lucide="alert-triangle"></i><span>${a}</span></div>`
+    ).join('');
+    this.syncStats();
+    lucide.createIcons();
+  },
+
   syncStats() {
     this.updateStats({
       totale: state.wardrobe.length,

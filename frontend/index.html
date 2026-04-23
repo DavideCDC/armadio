@@ -96,6 +96,10 @@
       </div>
     </div>
 
+    <button class="btn btn-primary" style="width:100%;margin-top:16px;gap:8px;" onclick="app.openLookModal()">
+      <i data-lucide="camera"></i> Valuta il mio look
+    </button>
+
     <!-- Recent -->
     <div class="section-header">
       <h2>Recenti</h2>
@@ -371,6 +375,67 @@
       <p id="authSuccess" style="color:var(--green);font-size:.78rem;margin-top:10px;text-align:center;display:none;"></p>
       <div class="spacer-sm"></div>
       <button class="btn btn-ghost btn-full" onclick="app.closeAuthModal()">Annulla</button>
+    </div>
+  </div>
+
+  <!-- LOOK MODAL -->
+  <div class="modal-bg" id="lookModal">
+    <div class="modal-sheet">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;">Valuta il mio look</h2>
+        <button class="btn btn-ghost" onclick="app.closeLookModal()" style="padding:4px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- STEP 1: upload + destinazione -->
+      <div id="lookStep1">
+        <div class="upload-area" id="lookUploadArea" onclick="document.getElementById('lookPhotoInput').click()">
+          <i data-lucide="camera"></i>
+          <span>Scatta o carica una foto</span>
+          <input type="file" id="lookPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="app.handleLookPhoto(event)">
+        </div>
+        <img id="lookPhotoPreview" style="display:none;width:100%;border-radius:12px;margin-top:12px;max-height:300px;object-fit:cover;">
+        <div style="margin-top:16px;">
+          <label class="label">Dove stai andando?</label>
+          <input type="text" id="lookDestination" class="form-input" placeholder="Es. Ufficio, Aperitivo, Palestra..." style="width:100%; box-sizing:border-box;">
+        </div>
+        <button class="btn btn-primary btn-full" style="margin-top:16px;" id="lookAnalyzeBtn" disabled onclick="app.analyzeLook()">
+          <i data-lucide="sparkles"></i> Analizza il look
+        </button>
+      </div>
+
+      <!-- STEP 2: loading -->
+      <div id="lookStep2" style="display:none;text-align:center;padding:32px 0;">
+        <i data-lucide="loader" style="animation:spin 1s linear infinite;color:var(--accent);"></i>
+        <p style="margin-top:12px;color:var(--text-2)">Analizzo il tuo look...</p>
+      </div>
+
+      <!-- STEP 3: aggiungi capi non trovati uno alla volta -->
+      <div id="lookStep3" style="display:none;">
+        <p style="font-size:.85rem;color:var(--text-2);margin-bottom:12px;">Capo rilevato ma non in armadio. Vuoi aggiungerlo?</p>
+        <div id="lookDetectedCard" class="card"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-ghost" style="flex:1" onclick="app.skipDetectedItem()">Salta</button>
+          <button class="btn btn-primary" style="flex:1" onclick="app.confirmDetectedItem()">Aggiungi</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--text-3);margin-top:8px;text-align:center;" id="lookDetectedProgress"></p>
+      </div>
+
+      <!-- STEP 4: risultato -->
+      <div id="lookStep4" style="display:none;text-align:center;">
+        <div style="margin:16px 0;" class="score-section">
+          <div class="score-ring">
+            <svg viewBox="0 0 100 100">
+              <circle class="track" cx="50" cy="50" r="45"/>
+              <circle class="progress" id="lookScoreCircle" cx="50" cy="50" r="45" stroke="url(#scoreGrad)"/>
+            </svg>
+            <div class="value" id="lookScoreValue">0</div>
+            <div class="label">/10</div>
+          </div>
+        </div>
+        <p id="lookScoreMsg" style="color:var(--text-2);font-size:.9rem;margin-bottom:16px;"></p>
+        <div id="lookAlerts"></div>
+        <button class="btn btn-primary btn-full" style="margin-top:8px;" onclick="app.closeLookModal()">Chiudi</button>
+      </div>
     </div>
   </div>
 

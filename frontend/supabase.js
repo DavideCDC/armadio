@@ -131,6 +131,17 @@ const db = {
     }).eq('id', id);
   },
 
+  updateClothingUses: async (id, usi, stato) => {
+    const { data, error } = await supabaseClient
+      .from('clothes')
+      .update({ contatore_usi_attuali: usi, stato: stato })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async resetAfterWash(ids) {
     for (const id of ids) {
       await supabaseClient.from('clothes').update({
