@@ -333,7 +333,7 @@ trama_materiale (uno di: Cotone, Lana, Denim, Seta, Lino, Sintetico, Pelle),
 limite_lavaggio_consigliato (numero intero da 1 a 10),
 marca_rilevata (marca se visibile, altrimenti Nessuna)`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -822,7 +822,7 @@ JSON esatto da restituire:
 {"punteggio": <numero 1-10 con 1 decimale>, "messaggio": "<frase breve in italiano>", "breakdown": {"meteo": {"weighted": <0-3>, "max": 3}, "colori": {"weighted": <0-4>, "max": 4}, "freshness": {"weighted": <0-3>, "max": 3}, "totale": <somma>}, "alert_lavaggio": [], "temperatura_attuale": ${temp}}`;
 
     const GEMINI_API_KEY = 'AIzaSyDSrFq1g_LoKE1x6lK-aNe8KnaZhCi7trM';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -914,7 +914,7 @@ Restituisci questo JSON:
   "alert_lavaggio": []
 }`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
