@@ -53,19 +53,9 @@
   <!-- PAGE: HOME -->
   <main class="page active" id="page-home">
 
-    <!-- Routine Suggestion -->
-    <div class="card" id="routineCard">
-      <div class="card-row">
-        <div class="card-icon" style="background:var(--accent-dim); color:var(--accent);">
-          <i data-lucide="sparkles"></i>
-        </div>
-        <div class="card-body">
-          <p class="section-label" id="routineLabel">SUGGERIMENTO</p>
-          <h3 id="routineTitle">Buongiorno! Cosa indossiamo?</h3>
-          <p id="routineDetail" style="margin-top:4px;">Usa l'app per sbloccare le previsioni</p>
-        </div>
-      </div>
-    </div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:24px;padding:16px;font-size:1.1rem;gap:12px;border-radius:16px;box-shadow:0 8px 24px rgba(139, 92, 246, 0.25);" onclick="app.openLookModal()">
+      <i data-lucide="camera" style="width:24px;height:24px;"></i> Valuta il mio look
+    </button>
 
     <!-- Context Tags -->
     <div class="section-label">CONTESTO</div>
@@ -95,10 +85,6 @@
         <div class="lbl">Lavaggio</div>
       </div>
     </div>
-
-    <button class="btn btn-primary" style="width:100%;margin-top:16px;gap:8px;" onclick="app.openLookModal()">
-      <i data-lucide="camera"></i> Valuta il mio look
-    </button>
 
     <!-- Recent -->
     <div class="section-header">

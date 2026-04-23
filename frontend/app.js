@@ -587,8 +587,9 @@ marca_rilevata (marca se visibile, altrimenti Nessuna)`;
   },
 
   renderRoutine(d) {
-    if (d.contesto_suggerito) {
-      document.getElementById('routineLabel').textContent = 'SUGGERIMENTO PROATTIVO';
+    const rl = document.getElementById('routineLabel');
+    if (d.contesto_suggerito && rl) {
+      rl.textContent = 'SUGGERIMENTO PROATTIVO';
       document.getElementById('routineTitle').textContent = `Oggi sembra un giorno da "${d.contesto_suggerito}"`;
       document.getElementById('routineDetail').textContent = `Confidenza: ${Math.round(d.confidenza*100)}%`;
     }
