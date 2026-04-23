@@ -495,6 +495,8 @@ marca_rilevata (marca se visibile, altrimenti Nessuna)`;
     try {
       const r = await fetch(`${API}/outfits/confirm`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
       if (r.ok) { this.showScore(await r.json()); this.loadWardrobeData(); return; }
+    } catch {}
+    
     // Aggiorna contatori locali
     state.selected.forEach(id => {
       const item = state.wardrobe.find(i => i.id === id);
@@ -816,30 +818,20 @@ Capi:
 ${itemsDesc}
 
 JSON esatto da restituire:
-{
-  "punteggio": <numero 1-10 con 1 decimale>,
-  "messaggio": "<frase breve in italiano>",
-  "breakdown": {
-    "meteo": {"weighted": <0-3>, "max": 3},
-    "colori": {"weighted": <0-4>, "max": 4},
-    "freshness": {"weighted": <0-3>, "max": 3},
-    "totale": <somma>
-  },
-  "alert_lavaggio": [],
-  "temperatura_attuale": ${temp}
-}`;
+{"punteggio": <numero 1-10 con 1 decimale>, "messaggio": "<frase breve in italiano>", "breakdown": {"meteo": {"weighted": <0-3>, "max": 3}, "colori": {"weighted": <0-4>, "max": 4}, "freshness": {"weighted": <0-3>, "max": 3}, "totale": <somma>}, "alert_lavaggio": [], "temperatura_attuale": ${temp}}`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const GEMINI_API_KEY = 'AIzaSyDSrFq1g_LoKE1x6lK-aNe8KnaZhCi7trM';
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: "application/json" }
       })
     });
+
     const data = await response.json();
-    const clean = data.content[0].text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    const clean = data.candidates[0].content.parts[0].text.replace(/```json/gi,'').replace(/```/g,'').trim();
     return JSON.parse(clean);
   },
 
