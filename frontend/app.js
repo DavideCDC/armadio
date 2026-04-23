@@ -842,6 +842,7 @@ JSON esatto da restituire:
     document.getElementById('lookStep2').style.display = 'none';
     document.getElementById('lookStep3').style.display = 'none';
     document.getElementById('lookStep4').style.display = 'none';
+    document.getElementById('lookUploadArea').style.display = '';
     document.getElementById('lookPhotoPreview').style.display = 'none';
     document.getElementById('lookAnalyzeBtn').disabled = true;
     document.getElementById('lookDestination').value = '';
@@ -864,10 +865,8 @@ JSON esatto da restituire:
       const p = document.getElementById('lookPhotoPreview');
       p.src = ev.target.result;
       p.style.display = 'block';
-      const icon = document.querySelector('#lookUploadArea i');
-      const span = document.querySelector('#lookUploadArea span');
-      if (icon) icon.style.display = 'none';
-      if (span) span.style.display = 'none';
+      p.onclick = () => document.getElementById('lookPhotoInput').click();
+      document.getElementById('lookUploadArea').style.display = 'none';
       document.getElementById('lookAnalyzeBtn').disabled = false;
     };
     reader.readAsDataURL(file);
@@ -924,7 +923,15 @@ Restituisci questo JSON:
         })
       });
 
+      if (!response.ok) {
+        if (response.status === 429) throw new Error("Troppe richieste. Attendi un minuto e riprova.");
+        throw new Error(`Errore API: ${response.status}`);
+      }
+
       const data = await response.json();
+      if (!data.candidates || !data.candidates[0].content) {
+        throw new Error("Formato json non valido ricevuto dall'API.");
+      }
       const clean = data.candidates[0].content.parts[0].text.replace(/```json/gi,'').replace(/```/g,'').trim();
       const result = JSON.parse(clean);
 
@@ -963,7 +970,7 @@ Restituisci questo JSON:
       console.warn('Look analysis failed:', e);
       document.getElementById('lookStep2').style.display = 'none';
       document.getElementById('lookStep1').style.display = 'block';
-      this.toast('Analisi fallita, riprova');
+      this.toast(e.message || 'Analisi fallita, riprova');
     }
   },
 
