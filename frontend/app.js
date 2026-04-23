@@ -290,8 +290,10 @@ const app = {
     document.getElementById('formArea').style.display = 'none';
     state.uploadedFile = null;
     const area = document.getElementById('uploadArea');
-    area.querySelector('i').style.display = '';
-    area.querySelector('span').style.display = '';
+    const areaIcon = area?.querySelector('i');
+    const areaSpan = area?.querySelector('span');
+    if (areaIcon) areaIcon.style.display = '';
+    if (areaSpan) areaSpan.style.display = '';
     lucide.createIcons();
   },
 
@@ -305,8 +307,10 @@ const app = {
     reader.onload = (ev) => {
       const p = document.getElementById('photoPreview');
       p.src = ev.target.result; p.style.display = 'block';
-      document.querySelector('#uploadArea i').style.display = 'none';
-      document.querySelector('#uploadArea span').style.display = 'none';
+      const aI = document.querySelector('#uploadArea i');
+      const aS = document.querySelector('#uploadArea span');
+      if (aI) aI.style.display = 'none';
+      if (aS) aS.style.display = 'none';
     };
     reader.readAsDataURL(file);
     this.analyzeImage(file);
@@ -329,7 +333,7 @@ trama_materiale (uno di: Cotone, Lana, Denim, Seta, Lino, Sintetico, Pelle),
 limite_lavaggio_consigliato (numero intero da 1 a 10),
 marca_rilevata (marca se visibile, altrimenti Nessuna)`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
